@@ -114,7 +114,7 @@ class process_grade:
                             target_assignment:str, # target assignment name. Must in the column of gradescope csv 
                            ) -> pd.Series: # late hours of the target assignment
         "Calculate the late hours of each submission of the target assignment"
-        late_col_name = f"{assignment_name} - Lateness (H:M:S)"
+        late_col_name = f"{target_assignment} - Lateness (H:M:S)"
         late_col = self.gradescope[late_col_name]
         # calculate how many slip day (hours) used for this assignment.
         late_hours = (
@@ -162,10 +162,12 @@ class process_grade:
         return edited
     
     def post_to_canvas(self,
-                       target_assignment:str, # target assignment name. Must in the column of gradescope csv 
+                       target_assignment:str, # target assignment name to grab the late time. Must in the column of gradescope csv 
                        passed_assignments:[str], # list of passed assignment. Must in the column of gradescope csv
                        components:[str], # components of a single assignment. Must in the column of gradescope csv
+                       post=True, # for testing purposes. Can hault the post operation
                       ):
+        "Post grade to canvas with late penalty."
         if self.gradescope is None:
             raise ValueError("Gradescope CSV has not been loaded. Please set it via process_grade.load_gradescope_csv")
         credit_balance = self.calculate_credit_balance(passed_assignments)
@@ -178,7 +180,7 @@ class process_grade:
         for email, _ in self.gradescope.iterrows():
             remaining = credit_balance[email]
             score, slip_hour = round(total_score[email], 4), late_hours[email]
-            message = f"{assignment_name}: \n"
+            message = f"{target_assignment}: \n"
             if slip_hour > 0:
                 # means late submission. Check remaining slip day
                 message += f"Late Submission: {int(slip_hour)} Hours Late\n"
@@ -192,8 +194,13 @@ class process_grade:
             balance_after = remaining - slip_hour
             message += f"Remaining Slip Credit: {int(balance_after)} Hours"
             try:
-                student_id = grade.email_to_canvas_id[email.split("@")[0]]
-                grade._post_grade(grade=score, student_id=student_id, text_comment=message)
+                if post:
+                    student_id = grade.email_to_canvas_id[email.split("@")[0]]
+                    grade._post_grade(grade=score, student_id=student_id, text_comment=message)
+                else:
+                    print(f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
+                          f"The message is: \n{bcolors.OKGREEN+message+bcolors.ENDC}"
+                         )
             except Exception as e:
                 print(f"Studnet: {bcolors.WARNING+email+bcolors.ENDC} Not found on canvas. \n"
                       f"Maybe Testing Account or Dropped Student")
