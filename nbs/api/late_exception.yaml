@@ -1,0 +1,7 @@
+grader-cogs108-02:
+    allowed_late_days: 7
+    reasons: sickness
+
+student2:
+    allowed_late_days: 10
+    reasons: family issue
