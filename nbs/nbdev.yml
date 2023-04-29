@@ -2,8 +2,8 @@ project:
   output-dir: _docs
 
 website:
-  title: "GradescopeLatePenalty"
-  site-url: "https://scott-yj-yang.github.io/GradescopeLatePenalty"
+  title: "LatePenalty"
+  site-url: "https://scott-yj-yang.github.io/LatePenalty"
   description: "Apply Late Penalty to Gradescope Submission to Canvas"
   repo-branch: main
-  repo-url: "https://github.com/scott-yj-yang/GradescopeLatePenalty"
+  repo-url: "https://github.com/scott-yj-yang/LatePenalty"

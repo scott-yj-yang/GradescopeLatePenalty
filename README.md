@@ -12,13 +12,13 @@ This module support both gradescope and nbgrader.
 ## Install
 
 ``` sh
-pip install git+https://github.com/scott-yj-yang/GradescopeLatePenalty.git
+pip install git+https://github.com/scott-yj-yang/LatePenalty.git
 ```
 
 ## How to use
 
 ``` python
-from GradescopeLatePenalty.gradescope import gradescope_grade
+from LatePenalty.gradescope import gradescope_grade
 ```
 
 ``` python
@@ -63,9 +63,7 @@ grade.gradescope
 
 </div>
 
-Use
-[`process_grade.post_to_canvas`](https://scott-yj-yang.github.io/GradescopeLatePenalty/api/process_grade.html#process_grade.post_to_canvas)
-to directly post to canvas
+Use `process_grade.post_to_canvas` to directly post to canvas
 
 ``` python
 grade.post_to_canvas(
