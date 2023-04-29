@@ -252,6 +252,7 @@ class nbgrader_grade:
                     print(f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
                           f"The message for {bcolors.OKCYAN+student_id+bcolors.ENDC} "
                           f"is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
+                          f"The score is {bcolors.OKGREEN}{score}{bcolors.ENDC}"
                          )
             except Exception as e:
                 print(f"Studnet: {bcolors.WARNING+email+bcolors.ENDC} Not found on canvas. \n"
