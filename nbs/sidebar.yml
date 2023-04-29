@@ -4,4 +4,9 @@ website:
       - index.ipynb
       - section: api
         contents:
-          - api/00_process_grade.ipynb
+          - api/00_gradescope_process_grade.ipynb
+          - api/01_nbgrader_process_grade.ipynb
+      - section: tutorial
+        contents:
+          - tutorial/gradescope late penalty tutorial.ipynb
+          - tutorial/nbgrader late penalty tutorial.ipynb
