@@ -195,8 +195,8 @@ class gradescope_grade:
             message += f"Remaining Slip Credit: {int(balance_after)} Hours"
             try:
                 if post:
-                    student_id = grade.email_to_canvas_id[email.split("@")[0]]
-                    grade._post_grade(grade=score, student_id=student_id, text_comment=message)
+                    student_id = self.email_to_canvas_id[email.split("@")[0]]
+                    self._post_grade(grade=score, student_id=student_id, text_comment=message)
                 else:
                     print(f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
                           f"The message is: \n{bcolors.OKGREEN+message+bcolors.ENDC}"

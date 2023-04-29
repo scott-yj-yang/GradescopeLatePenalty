@@ -207,7 +207,7 @@ class nbgrader_grade:
                 }
             )
         if self.verbosity != 0:
-            print(f"Grade for {bcolors.OKGREEN+email+bcolors.ENDC} Posted!")
+            print(f"Grade for {bcolors.OKCYAN}{self.canvas_id_to_email[student_id]}{bcolors.ENDC} Posted!")
         return edited
     
     def post_to_canvas(self,
@@ -246,16 +246,21 @@ class nbgrader_grade:
             message += f"Remaining Slip Credit: {int(balance_after)} Days"
             try:
                 if post:
-                    canvas_student_id = grade.email_to_canvas_id[student_id]
-                    grade._post_grade(grade=score, student_id=canvas_student_id, text_comment=message)
+                    canvas_student_id = self.email_to_canvas_id[student_id]
+                    self._post_grade(grade=score, student_id=canvas_student_id, text_comment=message)
+                    if self.verbosity != 0:
+                        print(f"The message for {bcolors.OKCYAN+student_id+bcolors.ENDC} "
+                              f"is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
+                              f"The score is {bcolors.OKGREEN}{score}{bcolors.ENDC}\n\n"
+                         )
                 else:
                     print(f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
                           f"The message for {bcolors.OKCYAN+student_id+bcolors.ENDC} "
                           f"is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
-                          f"The score is {bcolors.OKGREEN}{score}{bcolors.ENDC}"
+                          f"The score is {bcolors.OKGREEN}{score}{bcolors.ENDC}\n\n"
                          )
             except Exception as e:
-                print(f"Studnet: {bcolors.WARNING+email+bcolors.ENDC} Not found on canvas. \n"
+                print(f"Studnet: {bcolors.WARNING+student_id+bcolors.ENDC} Not found on canvas. \n"
                       f"Maybe Testing Account or Dropped Student")
                 print(e)
                 pass
