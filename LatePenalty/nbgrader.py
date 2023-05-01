@@ -244,8 +244,8 @@ class nbgrader_grade:
                 # if the student did get penalized and did not use the slip day
                 balance_after = balance
             message += f"Remaining Slip Credit: {int(balance_after)} Days"
-            try:
-                if post:
+            if post:
+                try:
                     canvas_student_id = self.email_to_canvas_id[student_id]
                     self._post_grade(grade=score, student_id=canvas_student_id, text_comment=message)
                     if self.verbosity != 0:
@@ -253,15 +253,15 @@ class nbgrader_grade:
                               f"is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
                               f"The score is {bcolors.OKGREEN}{score}{bcolors.ENDC}\n\n"
                          )
-                else:
-                    print(f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
-                          f"The message for {bcolors.OKCYAN+student_id+bcolors.ENDC} "
-                          f"is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
-                          f"The score is {bcolors.OKGREEN}{score}{bcolors.ENDC}\n\n"
-                         )
-            except Exception as e:
-                print(f"Studnet: {bcolors.WARNING+student_id+bcolors.ENDC} Not found on canvas. \n"
-                      f"Maybe Testing Account or Dropped Student")
-                print(e)
-                pass
+                except Exception as e:
+                    print(f"Studnet: {bcolors.WARNING+student_id+bcolors.ENDC} Not found on canvas. \n"
+                          f"Maybe Testing Account or Dropped Student")
+                    print(e)
+                    pass
+            else:
+                print(f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
+                      f"The message for {bcolors.OKCYAN+student_id+bcolors.ENDC} "
+                      f"is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
+                      f"The score is {bcolors.OKGREEN}{score}{bcolors.ENDC}\n\n"
+                     )
         
