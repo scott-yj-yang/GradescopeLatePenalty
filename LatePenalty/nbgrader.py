@@ -123,7 +123,7 @@ class nbgrader_grade:
             self.late_exception = yaml.safe_load(f)
         
     def _parse_assignments(self):
-        "Parse all assignment by assignment name. And calculate late days used."
+        "Parse all assignments by assignment name. And calculate late days used."
         if len(self.grades) == 0:
             raise ValueError("grades has not been loaded. Please loaded via self.load_grades_csv")
         assignments = self.grades["assignment"].unique()
@@ -133,8 +133,8 @@ class nbgrader_grade:
             A = df[df["assignment"] == assignment]
             # filter those who submitted
             A = A[~A["timestamp"].isna()].copy()
-            # remove the redundant /
-            A["student_id"] = A["student_id"].str.split("/").str[0]
+            # remove the redundant user with /
+            A = A[~A["student_id"].str.contains("/")].copy()
             A = A.set_index("student_id")
             slip_day_used = self._calculate_late_days(A)
             A["slip_day_used"] = slip_day_used
