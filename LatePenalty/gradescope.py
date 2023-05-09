@@ -145,12 +145,19 @@ class gradescope_grade:
         return self.gradescope["target_total"]
     
     def _post_grade(self,
-                   student_id: int, # canvas student id of student. found in self.email_to_canvas_id
-                   grade: float, # grade of that assignment
-                   text_comment="", # text comment of the submission. Can feed
+                    student_id: int, # canvas student id of student. found in self.email_to_canvas_id
+                    grade: float, # grade of that assignment
+                    text_comment="", # text comment of the submission. Can feed
+                    force=False, # whether force to post grade for all students. If False (default), it will skip post for the same score.
                   ) -> canvasapi.submission.Submission: # created submission
         "Post grade and comment to canvas to the target assignment"
         submission = self.assignment.get_submission(student_id)
+        if not force and submission.score == grade:
+            if self.verbosity != 0:
+                print(f"Grade for {bcolors.OKGREEN+self.canvas_id_to_email[student_id]+bcolors.ENDC} did not change.\n"
+                      f"{bcolors.OKCYAN}Skipped{bcolors.ENDC}.\n"
+                     )
+            return
         edited = submission.edit(
             submission={
                 'posted_grade': grade
@@ -159,7 +166,7 @@ class gradescope_grade:
             }
         )
         if self.verbosity != 0:
-            print(f"Grade for {bcolors.OKGREEN+email+bcolors.ENDC} Posted!")
+            print(f"Grade for {bcolors.OKGREEN+self.canvas_id_to_email[student_id]+bcolors.ENDC} Posted!")
         return edited
     
     def post_to_canvas(self,
@@ -167,6 +174,7 @@ class gradescope_grade:
                        passed_assignments:[str], # list of passed assignment. Must in the column of gradescope csv
                        components:[str], # components of a single assignment. Must in the column of gradescope csv
                        post=True, # for testing purposes. Can hault the post operation
+                       force=False, # whether force to post grade for all students. If False (default), it will skip post for the same score.
                       ):
         "Post grade to canvas with late penalty."
         if self.gradescope is None:
@@ -178,6 +186,8 @@ class gradescope_grade:
         else:
             total_score = self.gradescope[target_assignment]
         # Post Grade
+        if not force and self.verbosity != 0:
+            print("Force Posting Disabled. If you need to completely overwrite student scores, please set force=True")
         for email, _ in self.gradescope.iterrows():
             remaining = credit_balance[email]
             score, slip_hour = round(total_score[email], 4), late_hours[email]
@@ -194,17 +204,19 @@ class gradescope_grade:
                 message += "Submitted intime\n"
             balance_after = remaining - slip_hour
             message += f"Remaining Slip Credit: {int(balance_after)} Hours"
-            try:
-                if post:
+            if post:
+                try:
                     student_id = self.email_to_canvas_id[email.split("@")[0]]
-                    self._post_grade(grade=score, student_id=student_id, text_comment=message)
-                else:
-                    print(f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
-                          f"The message is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
-                         )
-            except Exception as e:
-                print(f"Studnet: {bcolors.WARNING+email+bcolors.ENDC} Not found on canvas. \n"
-                      f"Maybe Testing Account or Dropped Student\n")
-                print(e)
-                pass
-        
+                    self._post_grade(grade=score,
+                                     student_id=student_id,
+                                     text_comment=message,
+                                     force=force
+                                    )
+                except Exception as e:
+                    print(f"Studnet: {bcolors.WARNING+email+bcolors.ENDC} Not found on canvas.\n"
+                          f"Maybe Testing Account or Dropped Student\n")
+                    print(e)
+            else:
+                print(f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
+                      f"The message is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
+                )
