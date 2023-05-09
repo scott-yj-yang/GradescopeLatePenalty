@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import json
 from datetime import datetime
+import yaml
 
 # %% ../nbs/api/00_gradescope_process_grade.ipynb 4
 class bcolors:
@@ -199,11 +200,11 @@ class gradescope_grade:
                     self._post_grade(grade=score, student_id=student_id, text_comment=message)
                 else:
                     print(f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
-                          f"The message is: \n{bcolors.OKGREEN+message+bcolors.ENDC}"
+                          f"The message is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
                          )
             except Exception as e:
                 print(f"Studnet: {bcolors.WARNING+email+bcolors.ENDC} Not found on canvas. \n"
-                      f"Maybe Testing Account or Dropped Student")
+                      f"Maybe Testing Account or Dropped Student\n")
                 print(e)
                 pass
         
