@@ -78,7 +78,7 @@ class gradescope_grade:
         if self.verbosity != 0:
             print(f"Course Set: {bcolors.OKGREEN} {self.course.name} {bcolors.ENDC}")
             print(f"Getting List of Users... This might take a while...")
-        self.users = list(self.course.get_users())
+        self.users = list(self.course.get_users(enrollment_type=['student']))
         if self.verbosity != 0:
             print(f"Users Fetch Complete! The course has {bcolors.OKBLUE}{len(self.users)}{bcolors.ENDC} users.")
         self.email_to_canvas_id = {}
