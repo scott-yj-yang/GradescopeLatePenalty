@@ -8,5 +8,5 @@ website:
           - tutorial/nbgrader late penalty tutorial.ipynb
       - section: api
         contents:
-          - api/00_gradescope_process_grade.ipynb
-          - api/01_nbgrader_process_grade.ipynb
+          - api/01_gradescope_process_grade.ipynb
+          - api/02_nbgrader_process_grade.ipynb
