@@ -297,9 +297,9 @@ class nbgrader_grade:
                        target_assignment:str, # target assignment name to grab the late time. Must in the column of nbgrader assignment csv 
                        passed_assignments:[str], # list of passed assignment. Must in the column of nbgrader assignment csv
                        post=True, # for testing purposes. Can hault the post operation
-                       A_1 = False, # Set True if grade A1 in COGS 108.
-                       git = False, # Set True if grade git part in A1, COGS 108. This will get all the pull requests from the course GitHub and grade those based on the information provided
-                       Quarter = "" # The quarter. e.g. Fa23, Wi24, etc.
+                       A_1 = False, # Set True if grading A1 for COGS108
+                       git = False, # Set True if grading git part for A1, COGS108
+                       Quarter = "" # Set the quarter, for example, Fa23, Wi24, etc.
                       ):
         "Post grade to canvas with late penalty."
         if self.grades is None:
@@ -460,3 +460,4 @@ class nbgrader_grade:
                       f"is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
                       f"The score is {bcolors.OKGREEN}{score}{bcolors.ENDC}\n\n"
                      )
+        
