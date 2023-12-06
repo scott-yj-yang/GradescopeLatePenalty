@@ -228,6 +228,9 @@ class nbgrader_grade:
     def _calculate_late_days(self,
                              df:pd.DataFrame # dataframe of a specific assignment
                             )-> pd.Series: # late days
+        
+        import datetime
+        
         # parse the timestamp
         duedate_format = "%Y-%m-%d %H:%M:%S"
         timestamp_format = "%Y-%m-%d %H:%M:%S.%f"
