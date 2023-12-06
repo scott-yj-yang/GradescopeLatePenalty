@@ -9,7 +9,7 @@ from canvasapi import Canvas
 import numpy as np
 import pandas as pd
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
 import yaml
 import os
 import requests
@@ -228,6 +228,9 @@ class nbgrader_grade:
     def _calculate_late_days(self,
                              df: pd.DataFrame  # dataframe of a specific assignment
                             ) -> pd.Series:  # late days
+        
+        from datetime import timedelta
+        
         # parse the timestamp
         duedate_format = "%Y-%m-%d %H:%M:%S"
         timestamp_format = "%Y-%m-%d %H:%M:%S.%f"
