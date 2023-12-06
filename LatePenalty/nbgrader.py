@@ -235,7 +235,7 @@ class nbgrader_grade:
         df["timestamp"] = df["timestamp"].apply(lambda x: datetime.strptime(x, timestamp_format))
 
         # Add three-hour tolerance
-        tolerance = datetime.timedelta(hours=3)
+        tolerance = timedelta(hours=3)
         df["duedate_with_tolerance"] = df["duedate"] + tolerance
 
         # Calculate late time delta considering the tolerance
