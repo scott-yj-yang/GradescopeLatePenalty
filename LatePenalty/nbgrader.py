@@ -226,16 +226,24 @@ class nbgrader_grade:
                 return 0
     
     def _calculate_late_days(self,
-                             df:pd.DataFrame # dataframe of a specific assignment
-                            )-> pd.Series: # late days
+                             df: pd.DataFrame  # dataframe of a specific assignment
+                            ) -> pd.Series:  # late days
         # parse the timestamp
         duedate_format = "%Y-%m-%d %H:%M:%S"
         timestamp_format = "%Y-%m-%d %H:%M:%S.%f"
         df["duedate"] = df["duedate"].apply(lambda x: datetime.strptime(x, duedate_format))
         df["timestamp"] = df["timestamp"].apply(lambda x: datetime.strptime(x, timestamp_format))
-        late_time_delta = (df["timestamp"] - df["duedate"])
+
+        # Add three-hour tolerance
+        three_hours = timedelta(hours=3)
+        df["duedate_with_tolerance"] = df["duedate"] + three_hours
+
+        # Calculate late time delta considering the tolerance
+        late_time_delta = (df["timestamp"] - df["duedate_with_tolerance"])
+
         # calculate late days, use ReLU
         slip_day_used = late_time_delta.apply(lambda x: np.max([np.ceil(x.total_seconds()/60/60/24), 0]))
+        
         return slip_day_used
     
     def get_late_days(self,
