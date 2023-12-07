@@ -236,8 +236,7 @@ class nbgrader_grade:
         timestamp_format = "%Y-%m-%d %H:%M:%S.%f"
         df["duedate"] = df["duedate"].apply(lambda x: datetime.strptime(x, duedate_format))
         df["timestamp"] = df["timestamp"].apply(lambda x: datetime.strptime(x, timestamp_format))
-        # calculate time delta with 3-hour tolerance
-        late_time_delta = (df["timestamp"] - df["duedate"] + datetime.timedelta(hours = 3))
+        late_time_delta = (df["timestamp"] - df["duedate"])
         # calculate late days, use ReLU
         slip_day_used = late_time_delta.apply(lambda x: np.max([np.ceil(x.total_seconds()/60/60/24), 0]))
         return slip_day_used
