@@ -225,17 +225,25 @@ class nbgrader_grade:
                 print(student, "PR not found", last_2, student_details[student], pr_details[student_details[student]["github"]])
                 return 0
     
-    def _calculate_late_days(self,
-                             df:pd.DataFrame # dataframe of a specific assignment
-                            )-> pd.Series: # late days
+    def _calculate_late_days(self, df: pd.DataFrame) -> pd.Series:
         # parse the timestamp
         duedate_format = "%Y-%m-%d %H:%M:%S"
         timestamp_format = "%Y-%m-%d %H:%M:%S.%f"
         df["duedate"] = df["duedate"].apply(lambda x: datetime.strptime(x, duedate_format))
         df["timestamp"] = df["timestamp"].apply(lambda x: datetime.strptime(x, timestamp_format))
+
+        # Calculate the time difference between submission and due date
         late_time_delta = (df["timestamp"] - df["duedate"])
-        # calculate late days, use ReLU
-        slip_day_used = late_time_delta.apply(lambda x: np.max([np.ceil(x.total_seconds()/60/60/24), 0]))
+
+        # Add 3-hour tolerance: Convert 3 hours to timedelta for comparison
+        three_hours = pd.to_timedelta(3, unit='h')
+
+        # Apply tolerance: Subtract 3 hours from the late time delta
+        adjusted_late_time = late_time_delta - three_hours
+
+        # Calculate late days, use ReLU (Rectified Linear Unit) for positive values only
+        slip_day_used = adjusted_late_time.apply(lambda x: np.max([np.ceil(x.total_seconds()/60/60/24), 0]))
+    
         return slip_day_used
     
     def get_late_days(self,
