@@ -91,3 +91,6 @@ authenticate or not.
 3.  At the profile page, click `Settings`
 4.  Scroll down, at `Approved Integrations`, click `+ New Access Token`
 5.  Name it, set expire date, and copy to the `credentials.json`
+
+## Update Note:
+- 11/01/2023: Added arguments to grade A1 and A1 GitHub part of COGS 108.
