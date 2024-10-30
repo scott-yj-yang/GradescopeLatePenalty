@@ -307,10 +307,10 @@ class nbgrader_grade:
     
     def post_to_canvas(self,
                        target_assignment:str, # target assignment name to grab the late time. Must in the column of nbgrader assignment csv 
+                       passed_assignments:List[str], # list of passed assignment. Must in the column of nbgrader assignment csv
                        A_1 = False, # Set True if grading A1 for COGS108
                        git = False, # Set True if grading git part for A1, COGS108
-                       Quarter = "" # Set the quarter, for example, Fa23, Wi24, etc.
-                       passed_assignments:List[str], # list of passed assignment. Must in the column of nbgrader assignment csv
+                       Quarter = "", # Set the quarter, for example, Fa23, Wi24, etc.
                        default_credit: int = 7, # default amount of late days calculated, used in FA24 COGS108
                        late_submission_deadline: int = 5, # the maximum amount of late days that we allow. Implements: We don't accept late submission after 5 days.
                        post=True, # for testing purposes. Can halt the post operation
