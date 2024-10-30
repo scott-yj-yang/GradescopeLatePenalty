@@ -11,6 +11,8 @@ import pandas as pd
 import json
 from datetime import datetime
 import yaml
+from typing import List
+from collections import defaultdict
 
 # %% ../nbs/api/01_gradescope_process_grade.ipynb 4
 class bcolors:
@@ -48,7 +50,7 @@ class gradescope_grade:
         self.verbosity = verbosity
         self.assignment = None
         self.gradescope = None
-        
+
         # initialize by the input parameter
         if credentials_fp != "":
             self.auth_canvas(credentials_fp)
@@ -58,7 +60,7 @@ class gradescope_grade:
             self.link_assignment(assignment_id)
         if gradescope_fp != "":
             self.load_gradescope_csv(gradescope_fp)
-        
+
     def auth_canvas(self,
                     credentials_fp: str # the Authenticator key generated from canvas
                    ):
@@ -72,7 +74,7 @@ class gradescope_grade:
         _ = self.canvas.get_activity_stream_summary()
         if self.verbosity != 0:
             print(f"{bcolors.OKGREEN}Authorization Successful!{bcolors.ENDC}")
-        
+
     def set_course(self, 
                    course_id: int # the course id of the target course
                   ):
@@ -111,7 +113,7 @@ class gradescope_grade:
             print(f"Assignment {bcolors.OKGREEN+assignment.name+bcolors.ENDC} Link!")
         self.assignment = assignment
         return assignment
-                    
+
     def load_gradescope_csv(self,
                             csv_pf:str # csv file path 
                            ):
@@ -120,7 +122,7 @@ class gradescope_grade:
         self.gradescope['Email'] = self.gradescope["Email"].str.split("@").str[0]
         self.gradescope = self.gradescope.set_index("Email")
         self.gradescope = self.gradescope.fillna(0)
-        
+
     def calculate_late_hour(self,
                             target_assignment:str, # target assignment name. Must in the column of gradescope csv 
                            ) -> pd.Series: # late hours of the target assignment
@@ -133,9 +135,9 @@ class gradescope_grade:
             np.ceil(late_col.str.split(":").str[1].astype(int)/60)
         )
         return late_hours
-        
+
     def calculate_credit_balance(self,
-                                 passed_assignments:[str], # list of passed assignment. Must in the column of gradescope csv
+                                 passed_assignments:List[str], # list of passed assignment. Must in the column of gradescope csv
                                  total_credit = 120 # total number of allowed late hours
                                 ) -> dict: # {email: credit balance} late credit balance of each student
         "Calculate the balance of late hours from the gradescope file"
@@ -145,18 +147,41 @@ class gradescope_grade:
             late_balance = self.gradescope["late balance"] - late_hours
             # do not deduct balanced if late penalty is applied.
             # mask only the late hours within the range of the allowance
-            self.gradescope["late balance"][late_balance>=0] = late_balance
+            valid_balance_mask = late_balance >= 0
+            self.gradescope.loc[valid_balance_mask, "late balance"] = late_balance
         return self.gradescope["late balance"]
-    
+
+    def calculate_late_reports(self,
+                               passed_assignments: List[str], # list of passed assignment. Must in the column of gradescope csv
+                               total_credit = 120 # total number of allowed late hours
+                            ) -> List[dict]: # {email: (str: late_assignments, int: late_hours, bool: penalty_applied )}, {email: int total_late_hours}
+        late_assignments = defaultdict(list)
+        total_late_hours = defaultdict(int)
+        self.gradescope["_late_balance"] = total_credit
+        for passed_assignment in passed_assignments:
+            late_hours = self.calculate_late_hour(passed_assignment)
+            late_balance = self.gradescope["_late_balance"] - late_hours
+            # do not deduct balanced if late penalty is applied.
+            # mask only the late hours within the range of the allowance
+            valid_balance_mask = late_balance >= 0
+            self.gradescope.loc[valid_balance_mask, "_late_balance"] = late_balance
+            penalty_applied = self.gradescope.index[~valid_balance_mask]
+            for email, late_hour in late_hours.items(): 
+                late_assignments[email].append(
+                    (passed_assignment, late_hour, email in penalty_applied)
+                )
+                total_late_hours[email] += late_hour
+        return late_assignments, total_late_hours
+
     def calculate_total_score(self,
-                              components:[str], # components of a single assignment. Must in the column of gradescope csv
+                              components:List[str], # components of a single assignment. Must in the column of gradescope csv
                              ) -> pd.Series:
         "Calculate the total score of an assignment"
         self.gradescope["target_total"] = 0
         for component in components:
             self.gradescope["target_total"] += self.gradescope[component]
         return self.gradescope["target_total"]
-    
+
     def _post_grade(self,
                     student_id: int, # canvas student id of a student. found in self.email_to_canvas_id
                     grade: float, # grade of that assignment
@@ -179,22 +204,24 @@ class gradescope_grade:
             }
         )
         if self.verbosity != 0:
-            print(f"Grade for {bcolors.OKGREEN+self.canvas_id_to_email[student_id]+bcolors.ENDC} Posted!")
+            print(f"Grade for {bcolors.OKGREEN+self.canvas_id_to_email[student_id]+bcolors.ENDC} Posted! \n Grade: {bcolors.OKGREEN+str(grade)+bcolors.ENDC} \n Comment: {bcolors.OKGREEN+text_comment+bcolors.ENDC} \n")
         return edited
-    
+
     def post_to_canvas(self,
                        target_assignment:str, # target assignment name to grab the late time. Must in the column of gradescope csv 
-                       passed_assignments:[str], # list of passed assignment. Must in the column of gradescope csv
-                       components:[str], # components of a single assignment. Must in the column of gradescope csv
+                       passed_assignments:List[str], # list of passed assignment. Must in the column of gradescope csv
+                       components=[], # components of a single assignment. Must in the column of gradescope csv
+                       total_credit=120, # total number of allowed late hours
                        post=False, # For testing purposes. Can halt the post-operation
                        force=False, # whether force to post grade for all students. If False (default), it will skip post for the same score.
+                       student=[], # list of student email to post grade. If empty, it will post all students
                       ):
         "Post grade to canvas with late penalty."
         if self.gradescope is None:
             raise ValueError("Gradescope CSV has not been loaded. Please set it via process_grade.load_gradescope_csv")
         if self.assignment is None:
             raise ValueError("Assignment has not been link. Please link the assignment.")
-        credit_balance = self.calculate_credit_balance(passed_assignments)
+        credit_balance = self.calculate_credit_balance(passed_assignments, total_credit=total_credit)
         late_hours = self.calculate_late_hour(target_assignment)
         if len(components) > 1:
             total_score = self.calculate_total_score(components)
@@ -206,6 +233,9 @@ class gradescope_grade:
         for email, _ in self.gradescope.iterrows():
             if email in self.course_staffs_emails:
                 # the course staffs did not have a canvas profile and thus don't need to post grade
+                continue
+            if len(student) > 0 and email not in student:
+                # if student list is provided, only post the grade for the student in the lit
                 continue
             remaining = credit_balance[email]
             score, slip_hour = round(total_score[email], 4), late_hours[email]
@@ -220,7 +250,10 @@ class gradescope_grade:
                     message += "Slip Credit Used. No late penalty applied\n"
                     remaining = remaining - slip_hour
             else:
-                message += "Submitted in-time\n"
+                if score == 0:
+                    message += "No/Invalid Submission\n"
+                else:
+                    message += "Submitted in-time\n"
             message += f"Remaining Slip Credit: {int(remaining)} Hours"
             if post:
                 try:
@@ -235,6 +268,7 @@ class gradescope_grade:
                           f"Maybe Testing Account or Dropped Student\n")
                     print(e)
             else:
-                print(f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
-                      f"The message for {email.split('@')[0]} is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
+                print(
+                    f"{bcolors.WARNING}Post Disabled{bcolors.ENDC}\n"
+                    f"The message for {email.split('@')[0]} is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n Grade: {bcolors.OKGREEN+str(score)+bcolors.ENDC} \n"
                 )

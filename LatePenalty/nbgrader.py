@@ -14,6 +14,8 @@ import yaml
 import os
 import requests
 import nbformat
+from typing import List
+
 
 # %% ../nbs/api/02_nbgrader_process_grade.ipynb 4
 class bcolors:
@@ -263,7 +265,7 @@ class nbgrader_grade:
         return late_day
         
     def calculate_credit_balance(self,
-                                 passed_assignments:[str], # list of passed assignments name. Must in the column of `assignment`.
+                                 passed_assignments:List[str], # list of passed assignments name. Must in the column of `assignment`.
                                  student_id:str, # target student
                                  default_credit = 5 # default total number of allowed late days
                                 ) -> int: # late credit balance of the target student
@@ -281,7 +283,7 @@ class nbgrader_grade:
     def _post_grade(self,
                    student_id: int, # canvas student id of student. found in self.email_to_canvas_id
                    grade: float, # grade of that assignment
-                   text_comment="", # text comment of the submission. Can feed
+                   text_comment="", # text comment of the submission, student will see it on the grade feedback
                   ) -> canvasapi.submission.Submission: # created submission
         "Post grade and comment to canvas to the target assignment"
         submission = self.assignment.get_submission(student_id)
@@ -305,11 +307,13 @@ class nbgrader_grade:
     
     def post_to_canvas(self,
                        target_assignment:str, # target assignment name to grab the late time. Must in the column of nbgrader assignment csv 
-                       passed_assignments:[str], # list of passed assignment. Must in the column of nbgrader assignment csv
-                       post=True, # for testing purposes. Can hault the post operation
                        A_1 = False, # Set True if grading A1 for COGS108
                        git = False, # Set True if grading git part for A1, COGS108
                        Quarter = "" # Set the quarter, for example, Fa23, Wi24, etc.
+                       passed_assignments:List[str], # list of passed assignment. Must in the column of nbgrader assignment csv
+                       default_credit: int = 7, # default amount of late days calculated, used in FA24 COGS108
+                       late_submission_deadline: int = 5, # the maximum amount of late days that we allow. Implements: We don't accept late submission after 5 days.
+                       post=True, # for testing purposes. Can halt the post operation
                       ):
         "Post grade to canvas with late penalty."
         if self.grades is None:
@@ -339,7 +343,7 @@ class nbgrader_grade:
         for student_id, row in self.grades_by_assignment[target_assignment].iterrows():
             penalty = False
             # fetch useful information
-            balance = self.calculate_credit_balance(passed_assignments, student_id)
+            balance = self.calculate_credit_balance(passed_assignments, student_id, default_credit=default_credit)
             late_days = self.get_late_days(target_assignment, student_id)
             score = row["raw_score"]
             
@@ -435,21 +439,25 @@ class nbgrader_grade:
             if late_days > 0:
                 # means late submission. Check remaining slip day
                 message += f"Late Submission: {int(late_days)} Days Late\n"
-                if balance - late_days < 0:
+                if late_days > late_submission_deadline:
+                    message += f"Submit after the late deadline, invalid submission\n"
+                    penalty = True
+                    score = 0
+                elif balance - late_days < 0:
                     message += "Insufficient Slip Credit. 25% late penalty applied\n"
                     score = round(score * 0.75, 4)
                     penalty = True
                 else:
                     message += "Slip Credit Used. No late penalty applied\n"
             else:
-                message += "Submitted intime\n"
+                message += "Submitted before deadline\n"
             if not penalty:
                 # if student did not get penalized and use the slip day
                 balance_after = balance - late_days
             else:
                 # if the student did get penalized and did not use the slip day
                 balance_after = balance
-            message += f"Remaining Slip Credit: {int(balance_after)} Days"
+            message += f"Remaining Slip Day Credit: {int(balance_after)} Days"
             if post:
                 try:
                     canvas_student_id = self.email_to_canvas_id[student_id]
@@ -460,7 +468,7 @@ class nbgrader_grade:
                               f"The score is {bcolors.OKGREEN}{score}{bcolors.ENDC}\n\n"
                          )
                 except Exception as e:
-                    print(f"Studnet: {bcolors.WARNING+student_id+bcolors.ENDC} Not found on canvas. \n"
+                    print(f"Student: {bcolors.WARNING+student_id+bcolors.ENDC} Not found on canvas. \n"
                           f"Maybe Testing Account or Dropped Student")
                     print(e)
                     pass
