@@ -15,6 +15,7 @@ import os
 import requests
 import nbformat
 from typing import List
+import re
 
 
 # %% ../nbs/api/02_nbgrader_process_grade.ipynb 4
@@ -197,35 +198,27 @@ class nbgrader_grade:
             else:
                 return False
     
-    def grade_prs(student_details):
+    def grade_prs(student_details, pr_details):
         """
         Checks if the PRs exist and grades student based on that
         """
         # Change points distribution of each rubric items
-        f = open('Pull_Requests.json')
-        pr = json.load(f)
         PR_SCORE = 1
-        pr_details = {}
-        for n_iter in range(1, 10):
-            for pulls in pr:
-                for pull in pulls:
-                    try:
-                        text = (pull["title"] + str(pull["body"])).lower()
-                    except TypeError:
-                        print(pull)
-                        print(pull["title"])
-                        print(pull["body"])
-                    pr_details[pull["user"]["login"]] = pr_details.get(pull["user"]["login"], "") + text
+        print(f"DEBUG: in grade_prs, student details: {student_details}")
+        # print(f"DEBUG: in grade_prs, pr_details: {pr_details}")
         for student in student_details:
-            if len(student_details[student]["github"]) == 0 or student_details[student]["github"] not in pr_details:
-                continue
+            if len(student_details[student]["github"]) == 0 or student_details[student]["github"].lower() not in pr_details:
+                print(f"student_details[student][github] not in pr_details: {student_details[student]['github'] not in pr_details}")
+                return 0
             last_2 = student_details[student]["pid"][-2:]
-            if last_2 in pr_details[student_details[student]["github"]]:
+            print(last_2)
+            if last_2 in pr_details[student_details[student]["github"].lower()]:
                 student_details[student]["score"] += PR_SCORE
                 return 1
             else:
-                print(student, "PR not found", last_2, student_details[student], pr_details[student_details[student]["github"]])
+                print(student, "PR not found", last_2, student_details[student], pr_details[student_details[student]["github"].lower()]) # why do you index when you did not find it???????
                 return 0
+        raise ValueError("Issue with this students")
     
     def _calculate_late_days(self, 
                              df: pd.DataFrame # dataframe of a specific assignment
@@ -246,7 +239,7 @@ class nbgrader_grade:
         adjusted_late_time = late_time_delta - tolerance
 
         # calculate late days, use ReLU
-        slip_day_used = adjusted_late_time.apply(lambda x: np.max([np.ceil(x.total_seconds()/60/60/24), 0]))
+        slip_day_used = adjusted_late_time.apply(lambda x: np.max([np.ceil(x.total_seconds()/60/60/24), 0])).apply(lambda x: x if x <= 5 else 0) # cap the maximum at 5
     
         return slip_day_used
     
@@ -284,9 +277,16 @@ class nbgrader_grade:
                    student_id: int, # canvas student id of student. found in self.email_to_canvas_id
                    grade: float, # grade of that assignment
                    text_comment="", # text comment of the submission, student will see it on the grade feedback
+                   force=False, # whether force post grade.
                   ) -> canvasapi.submission.Submission: # created submission
         "Post grade and comment to canvas to the target assignment"
         submission = self.assignment.get_submission(student_id)
+        if not force and submission.score == grade:
+            if self.verbosity != 0:
+                print(f"Grade for {bcolors.OKGREEN+self.canvas_id_to_email[student_id]+bcolors.ENDC} did not change.\n"
+                      f"{bcolors.OKCYAN}Skipped{bcolors.ENDC}.\n"
+                     )
+            return
         if grade is not None:
             edited = submission.edit(
                 submission={
@@ -308,6 +308,7 @@ class nbgrader_grade:
     def post_to_canvas(self,
                        target_assignment:str, # target assignment name to grab the late time. Must in the column of nbgrader assignment csv 
                        passed_assignments:List[str], # list of passed assignment. Must in the column of nbgrader assignment csv
+                       student=None, # if specify, only grade that student.
                        A_1 = False, # Set True if grading A1 for COGS108
                        git = False, # Set True if grading git part for A1, COGS108
                        Quarter = "", # Set the quarter, for example, Fa23, Wi24, etc.
@@ -339,8 +340,26 @@ class nbgrader_grade:
                     json.dump(pull_requests, json_file)
 
                 print("Pull Requests fetched and saved.")
+
+            f = open('Pull_Requests.json')
+            pr = json.load(f)
+            PR_SCORE = 1
+            pr_details = {}
+            for n_iter in range(1, 10):
+                for pulls in pr:
+                    for pull in pulls:
+                        try:
+                            text = (pull["title"] + str(pull["body"])).lower()
+                        except TypeError:
+                            print(pull)
+                            print(pull["title"])
+                            print(pull["body"])
+                        pr_details[pull["user"]["login"].lower()] = pr_details.get(pull["user"]["login"], "") + text
+            # print(f"PR_details: {pr_details.keys()}")
         
         for student_id, row in self.grades_by_assignment[target_assignment].iterrows():
+            if student is not None and student_id not in student:
+                continue
             penalty = False
             # fetch useful information
             balance = self.calculate_credit_balance(passed_assignments, student_id, default_credit=default_credit)
@@ -386,12 +405,12 @@ class nbgrader_grade:
                     PID_string = [i for i in res if all(substring in i for substring in ['PID','='])] 
                     github_string = [i for i in res if all(substring in i for substring in ['github_username','='])]
                     if(len(PID_string)!=0 and len(github_string)!=0):
-                        PID = (PID_string[-1].split('='))[-1].strip().strip("'").strip('"') 
+                        PID = (PID_string[-1].split('='))[-1].strip().strip("\'").strip("\"").strip(";").replace("'", "")
                         github_username = (github_string[-1].split('='))[-1].strip().strip("'").strip('"')
-                        #print(student_id, PID, github_username)
+                        print(student_id, PID, github_username)
                         student_details[student_id] = {"pid": PID, "github": github_username, "score": 0}
 
-                #print(student_details)
+                print(student_details)
 
                 try:
                     if len(student_details[student_id]["github"]) == 0:
@@ -401,13 +420,13 @@ class nbgrader_grade:
                     #User exists:
                     if nbgrader_grade.check_git_user(student_details[student_id]["github"]):
                         student_details[student_id]["score"] += 0.5
-                        #print(student_details)
+                        print(student_details)
                         user_score = 0.5
 
                     #Repo exists:
                     if nbgrader_grade.check_git_repo(student_details[student_id]["github"], "COGS108_repo"):
                         student_details[student_id]["score"] += 0.5
-                        #print(student_details)
+                        print(student_details)
                         repo_score = 0.5
 
                     #Files exist:
@@ -417,12 +436,12 @@ class nbgrader_grade:
                     is_readme = is_readme or nbgrader_grade.check_git_file(student_details[student_id]["github"], "COGS108_repo", "README.md")
                     if is_gitignore and is_readme:
                         student_details[student_id]["score"] += 0.5
-                        #print(student_details)
+                        print(student_details)
                         file_score = 0.5
 
                     #Pull requests:
-                    pr_score = nbgrader_grade.grade_prs(student_details)
-
+                    pr_score = nbgrader_grade.grade_prs(student_details, pr_details)
+                    print(f"PR_score: {pr_score}")
                     score += student_details[student_id]["score"]
 
                     message += f"user_exists_score: {user_score},\n"
@@ -431,8 +450,9 @@ class nbgrader_grade:
                     message += f"pull_request_score: {pr_score}.\n"
 
                 # build message for each student
-                except KeyError:
+                except KeyError as e:
                     print('User does not exist, skipped grading git.')
+                    print(e)
                     message += f"No information provided in assignment, 0 automatically assigned for git part.\n"
                     pass
             
@@ -441,7 +461,7 @@ class nbgrader_grade:
                 message += f"Late Submission: {int(late_days)} Days Late\n"
                 if late_days > late_submission_deadline:
                     message += f"Submit after the late deadline, invalid submission\n"
-                    penalty = True
+                    penalty = False
                     score = 0
                 elif balance - late_days < 0:
                     message += "Insufficient Slip Credit. 25% late penalty applied\n"
@@ -461,7 +481,7 @@ class nbgrader_grade:
             if post:
                 try:
                     canvas_student_id = self.email_to_canvas_id[student_id]
-                    self._post_grade(grade=score, student_id=canvas_student_id, text_comment=message)
+                    self._post_grade(grade=score, student_id=canvas_student_id, text_comment=message, force=True)
                     if self.verbosity != 0:
                         print(f"The message for {bcolors.OKCYAN+student_id+bcolors.ENDC} "
                               f"is: \n{bcolors.OKGREEN+message+bcolors.ENDC}\n"
