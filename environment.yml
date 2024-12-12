@@ -24,3 +24,4 @@ dependencies:
     - PyGithub
     - canvasapi
     - nbdev
+    - nbformat
