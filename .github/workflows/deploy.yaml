@@ -1,7 +1,9 @@
 name: Deploy to GitHub Pages
 on:
   push:
-    branches: [master]
+    branches:
+        - master
+        - scott/gihtub_action_test
   workflow_dispatch:
 jobs:
   deploy:
