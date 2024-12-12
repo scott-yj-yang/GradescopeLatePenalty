@@ -1,7 +1,9 @@
 name: Deploy to GitHub Pages
 on:
   push:
-    branches: [master scott/gihtub_action_test]
+    branches:
+        - master
+        - scott/gihtub_action_test 
   workflow_dispatch:
 env:
   OBJC_DISABLE_INITIALIZE_FORK_SAFETY: YES
